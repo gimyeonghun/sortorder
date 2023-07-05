@@ -13,9 +13,11 @@ struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
 
     @FetchRequest(
-        sortDescriptors: [NSSortDescriptor(keyPath: \Item.index, ascending: true)],
+        sortDescriptors: [NSSortDescriptor(keyPath: \Item.index, ascending: true), NSSortDescriptor(keyPath: \Item.timestamp, ascending: true)],
         animation: .default)
     private var items: FetchedResults<Item>
+    
+    private let controller = ContentViewController.shared
 
     var body: some View {
         NavigationStack {
@@ -110,23 +112,30 @@ struct ContentView: View {
         let origin = source.map { $0 }.first!
         let item = items[source.first!]
 //        let object = items[destination]
-        print(destination)
-        if destination == 0 {
-            item.index = Int64.random(in: -99999...items.first!.index)
-        } else if destination == items.count {
-            item.index = 0
-            checkPreviousNeighbour(item)
-        } else if origin > destination { // going down
-            if let neighbour = fetchPreviousNeighbour(item),
-               let previousNeigbour = fetchPreviousNeighbour(neighbour) {
-                item.index = Int64.random(in: previousNeigbour.index...neighbour.index)
-            }
-        } else if origin < destination { // going up
-            if let neighbour = fetchForwardNeighbour(item),
-               let forwardNeighbour = fetchForwardNeighbour(neighbour) {
-                item.index = Int64.random(in: neighbour.index...forwardNeighbour.index)
-            }
-        }
+        
+        
+        if 
+        
+        
+        let first = try? controller.fetchHighestIndex()
+        print(first!.index)
+        
+//        if destination == 0 {
+//            item.index = Int64.random(in: -99999...items.first!.index)
+//        } else if destination == items.count {
+//            item.index = 0
+//            checkPreviousNeighbour(item)
+//        } else if origin > destination { // going down
+//            if let neighbour = fetchPreviousNeighbour(item),
+//               let previousNeigbour = fetchPreviousNeighbour(neighbour) {
+//                item.index = Int64.random(in: previousNeigbour.index...neighbour.index)
+//            }
+//        } else if origin < destination { // going up
+//            if let neighbour = fetchForwardNeighbour(item),
+//               let forwardNeighbour = fetchForwardNeighbour(neighbour) {
+//                item.index = Int64.random(in: neighbour.index...forwardNeighbour.index)
+//            }
+//        }
         
 
 //        var objects = items.map { $0 }
