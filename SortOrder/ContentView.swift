@@ -4,6 +4,7 @@
 //
 //  Created by Brian Kim on 6/7/2023.
 //
+// https://www.appsdissected.com/order-core-data-entities-maximum-speed/
 
 import SwiftUI
 import CoreData
@@ -55,36 +56,49 @@ struct ContentView: View {
     }
     
     private func checkPreviousNeighbour(_ item: Item) {
-        
-        print("The item of interest", item.index)
-        
         if let neighbour = fetchPreviousNeighbour(item) {
-            
-            print("The preceding neighbour", neighbour.index)
-            
-            if neighbour.index == item.index {
-                neighbour.index = -1000
-//                if let previousNeighbour = fetchPreviousNeighbour(neighbour) {
-//
-//                    print("The previous neighbour index to all of this is \(previousNeighbour.index)")
-//
-//                    neighbour.index = (previousNeighbour.index + item.index) / 2
-//
-//                    print("Neighbour index changed to \(neighbour.index)")
-//
-//                } else {
-//                    print("Changing neighbour index to -1000")
-//                    neighbour.index = -1000
-//                }
+            if neighbour.index >= item.index {
+                if let previousNeighbour = fetchPreviousNeighbour(neighbour) {
+                    neighbour.index = Int64.random(in: previousNeighbour.index...item.index)
+                    if neighbour.index == 0 {
+                        print("check here") // also a problem
+                        while neighbour.index == 0 {
+                            neighbour.index = Int64.random(in: previousNeighbour.index...item.index)
+                        }
+                    }
+                    
+                } else {
+                    neighbour.index = Int64.random(in: -99999...item.index)
+                    print("this is getting called")
+                }
+                print("Changed Neighbour Index: \(neighbour.index)")
+            } else {
+                // buggy
+                print("Neighbour Index: \(neighbour.index) vs \(item.index)")
             }
         } else {
             print("Nothing got called")
         }
     }
+    // There's a bug where you have to wait
     
     private func fetchPreviousNeighbour(_ item: Item) -> Item? {
-        guard items.count > 0 else { return nil }
-        let neighbour = items[0]
+        let request = NSFetchRequest<Item>(entityName: "Item")
+        request.sortDescriptors = [NSSortDescriptor(keyPath: \Item.index, ascending: true)]
+        guard let fetch = try? viewContext.fetch(request),
+              let index = fetch.firstIndex(of: item),
+              index > 0 else { return nil }
+        let neighbour = fetch[index - 1]
+        return neighbour
+    }
+    
+    private func fetchForwardNeighbour(_ item: Item) -> Item? {
+        let request = NSFetchRequest<Item>(entityName: "Item")
+        request.sortDescriptors = [NSSortDescriptor(keyPath: \Item.index, ascending: true)]
+        guard let fetch = try? viewContext.fetch(request),
+              let index = fetch.firstIndex(of: item),
+              index + 1 != fetch.count else { return nil }
+        let neighbour = fetch[index + 1]
         return neighbour
     }
     
@@ -92,11 +106,29 @@ struct ContentView: View {
         print("Indices: \(source.map { $0 })")
         print("Destination: \(destination)")
         
+        
+        let origin = source.map { $0 }.first!
         let item = items[source.first!]
-        let object = items[destination]
+//        let object = items[destination]
+        print(destination)
+        if destination == 0 {
+            item.index = Int64.random(in: -99999...items.first!.index)
+        } else if destination == items.count {
+            item.index = 0
+            checkPreviousNeighbour(item)
+        } else if origin > destination { // going down
+            if let neighbour = fetchPreviousNeighbour(item),
+               let previousNeigbour = fetchPreviousNeighbour(neighbour) {
+                item.index = Int64.random(in: previousNeigbour.index...neighbour.index)
+            }
+        } else if origin < destination { // going up
+            if let neighbour = fetchForwardNeighbour(item),
+               let forwardNeighbour = fetchForwardNeighbour(neighbour) {
+                item.index = Int64.random(in: neighbour.index...forwardNeighbour.index)
+            }
+        }
         
-        item.index = object.index - 100
-        
+
 //        var objects = items.map { $0 }
 //        objects.move(fromOffsets: source, toOffset: destination)
 //        for reverseIndex in stride(from: objects.count - 1, to: 0, by: -1) {
@@ -139,4 +171,10 @@ struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView().environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
     }
+}
+
+enum State {
+    case top
+    case inBetween
+    case bottom
 }
