@@ -39,7 +39,9 @@ struct ContentView: View {
         withAnimation {
             let newItem = Item(context: viewContext)
             newItem.timestamp = Date()
-            newItem.index = 10
+            newItem.index = 0 // it'll always be at the bottom of the list
+            
+            checkPreviousNeighbour(newItem)
 
             do {
                 try viewContext.save()
@@ -50,6 +52,25 @@ struct ContentView: View {
                 fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
             }
         }
+    }
+    
+    private func checkPreviousNeighbour(_ item: Item) {
+        if let neighbour = fetchPreviousNeighbour(item) {
+            if neighbour.index == item.index {
+                if let previousNeighbour = fetchPreviousNeighbour(neighbour) {
+                    neighbour.index = (previousNeighbour.index + item.index) / 2
+                } else {
+                    neighbour.index = -1000
+                }
+            }
+        }
+    }
+    
+    private func fetchPreviousNeighbour(_ item: Item) -> Item? {
+        guard let index = items.firstIndex(of: item),
+              index > 0 else { return nil }
+        let neighbour = items[index - 1]
+        return neighbour
     }
     
     private func move(from source: IndexSet, to destination: Int) {
