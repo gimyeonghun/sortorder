@@ -91,11 +91,17 @@ struct ContentView: View {
     private func move(from source: IndexSet, to destination: Int) {
         print("Indices: \(source.map { $0 })")
         print("Destination: \(destination)")
-        var objects = items.map { $0 }
-        objects.move(fromOffsets: source, toOffset: destination)
-        for reverseIndex in stride(from: objects.count - 1, to: 0, by: -1) {
-            objects[reverseIndex].index = -Int64(reverseIndex)
-        }
+        
+        let item = items[source.first!]
+        let object = items[destination]
+        
+        item.index = object.index - 100
+        
+//        var objects = items.map { $0 }
+//        objects.move(fromOffsets: source, toOffset: destination)
+//        for reverseIndex in stride(from: objects.count - 1, to: 0, by: -1) {
+//            objects[reverseIndex].index = Int64(reverseIndex)
+//        }
         do {
             try viewContext.save()
         } catch {
