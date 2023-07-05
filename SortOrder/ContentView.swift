@@ -55,21 +55,36 @@ struct ContentView: View {
     }
     
     private func checkPreviousNeighbour(_ item: Item) {
+        
+        print("The item of interest", item.index)
+        
         if let neighbour = fetchPreviousNeighbour(item) {
+            
+            print("The preceding neighbour", neighbour.index)
+            
             if neighbour.index == item.index {
-                if let previousNeighbour = fetchPreviousNeighbour(neighbour) {
-                    neighbour.index = (previousNeighbour.index + item.index) / 2
-                } else {
-                    neighbour.index = -1000
-                }
+                neighbour.index = -1000
+//                if let previousNeighbour = fetchPreviousNeighbour(neighbour) {
+//
+//                    print("The previous neighbour index to all of this is \(previousNeighbour.index)")
+//
+//                    neighbour.index = (previousNeighbour.index + item.index) / 2
+//
+//                    print("Neighbour index changed to \(neighbour.index)")
+//
+//                } else {
+//                    print("Changing neighbour index to -1000")
+//                    neighbour.index = -1000
+//                }
             }
+        } else {
+            print("Nothing got called")
         }
     }
     
     private func fetchPreviousNeighbour(_ item: Item) -> Item? {
-        guard let index = items.firstIndex(of: item),
-              index > 0 else { return nil }
-        let neighbour = items[index - 1]
+        guard items.count > 0 else { return nil }
+        let neighbour = items[0]
         return neighbour
     }
     
