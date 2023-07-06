@@ -144,7 +144,7 @@ final class ContentViewController {
     /// Checks whether there's enough space for the items to be differeniated
     private func validate(_ items: [Item]) {
         recalculateBounds(items)
-        checkUniqueness(items)
+//        checkUniqueness(items)
         cleanUp()
     }
     
@@ -162,12 +162,13 @@ final class ContentViewController {
                     newLowerBound = fetchDescendingNeighbour(below: newLowerBound)?.index ?? 0
                 }
                 
-                let range = abs(newUpperBoundIndex - newLowerBound) / 3
+                let range = abs(newUpperBoundIndex - newLowerBound)
                 print("range is \(range); lower: \(newLowerBound) - upper: \(newUpperBoundIndex)")
                 print("Starting from: \(newLowerBound)")
                 
-                for index in stride(from: newLowerBound, through: newUpperBoundIndex, by: Int64.Stride(range)) {
-                    items[Int(index)].index = -range * index
+                for (index, item) in items.enumerated() {
+                    var multiplier = range/5 * Int64(index+1)
+                    item.index = newLowerBound - multiplier
                 }
                 
                 print("Finishing at: \(newUpperBoundIndex)")
@@ -186,6 +187,7 @@ final class ContentViewController {
             if let similarItem = try? self.persistence.container.viewContext.fetch(request).first,
                let upperBound = fetchParentNeighbour(above: item.index),
                let lowerBound = fetchDescendingNeighbour(below: item.index) {
+                print(similarItem.index)
                 similarItem.index = Int64.random(in: similarItem.index...upperBound.index)
                 item.index = Int64.random(in: lowerBound.index...similarItem.index)
             }
