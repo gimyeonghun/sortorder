@@ -11,6 +11,7 @@ import CoreData
 final class ContentViewController {
     static let shared = ContentViewController()
     private var persistence = PersistenceController.shared
+    private let request = NSFetchRequest<Item>(entityName: "Item")
     
     func add(item: Item) {
         item.index = 0
@@ -48,15 +49,14 @@ final class ContentViewController {
             if let secDescNeighbour = fetchDescendingNeighbour(at: destination) {
                 item.index = assignIndex(start: firstDescNeighbour.index, end: secDescNeighbour.index)
                 validate([secDescNeighbour, item, firstDescNeighbour])
-            } else if let parentNeighbourIndex = fetchIndex(at: destination - 1) {
-                firstDescNeighbour.index = assignIndex(start: parentNeighbourIndex, end: 0)
+            } else if let parentNeighbour = fetchItem(at: destination - 1) {
+                firstDescNeighbour.index = assignIndex(start: parentNeighbour.index, end: 0)
                 item.index = 0
             }
         }
     }
     
     private func fetchHighestIndex() -> Item? {
-        let request = NSFetchRequest<Item>(entityName: "Item")
         request.sortDescriptors = [NSSortDescriptor(keyPath: \Item.index, ascending: true)]
         request.fetchLimit = 1
         do {
@@ -81,7 +81,6 @@ final class ContentViewController {
     }
     
     private func fetchDescendingNeighbour(at destination: Int) -> Item? {
-        let request = NSFetchRequest<Item>(entityName: "Item")
         request.fetchOffset = destination
         request.sortDescriptors = [NSSortDescriptor(keyPath: \Item.index, ascending: true)]
         request.fetchLimit = 1
@@ -94,7 +93,6 @@ final class ContentViewController {
     }
     
     private func fetchDescendingNeighbour(below index: Int64) -> Item? {
-        let request = NSFetchRequest<Item>(entityName: "Item")
         request.predicate = NSPredicate(format: "%K > %ld", #keyPath(Item.index), index)
         request.sortDescriptors = [NSSortDescriptor(keyPath: \Item.index, ascending: true)]
         request.fetchLimit = 1
@@ -107,7 +105,6 @@ final class ContentViewController {
     }
     
     private func fetchParentNeighbour(above index: Int64) -> Item? {
-        let request = NSFetchRequest<Item>(entityName: "Item")
         request.predicate = NSPredicate(format: "%K <= %ld", #keyPath(Item.index), index)
         request.sortDescriptors = [NSSortDescriptor(keyPath: \Item.index, ascending: true)]
         request.fetchLimit = 1
@@ -120,7 +117,6 @@ final class ContentViewController {
     }
     
     private func fetchItem(at destination: Int) -> Item? {
-        let request = NSFetchRequest<Item>(entityName: "Item")
         request.fetchOffset = destination - 1
         request.sortDescriptors = [NSSortDescriptor(keyPath: \Item.index, ascending: true)]
         request.fetchLimit = 1
@@ -131,12 +127,7 @@ final class ContentViewController {
             return nil
         }
     }
-    
-    private func fetchIndex(at destination: Int) -> Int64? {
-        guard let item = try? fetchItem(at: destination) else { return nil }
-        return item.index
-    }
-    
+
     /// Checks whether there's enough space for the items to be differeniated
     private func validate(_ items: [Item]) {
         recalculateBounds(items)
@@ -163,7 +154,7 @@ final class ContentViewController {
                 print("Starting from: \(newLowerBound)")
                 
                 for (index, item) in items.enumerated() {
-                    var multiplier = range/5 * Int64(index+1)
+                    let multiplier = range/5 * Int64(index+1)
                     item.index = newLowerBound - multiplier
                 }
                 
@@ -174,8 +165,6 @@ final class ContentViewController {
     }
     
     private func checkUniqueness(_ items: [Item]) {
-        let request = NSFetchRequest<Item>(entityName: "Item")
-      
         for item in items {
             request.predicate = NSPredicate(format: "%K == %ld AND %K != %@", #keyPath(Item.index), item.index, #keyPath(Item.timestamp), item.timestamp! as CVarArg)
             request.sortDescriptors = [NSSortDescriptor(keyPath: \Item.index, ascending: true)]
