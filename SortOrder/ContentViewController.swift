@@ -28,8 +28,12 @@ final class ContentViewController {
                let descNeighbourIndex = fetchDescendingNeighbourIndex(at: destination) {
                 item.index = assignIndex(start: parentNeighbourIndex, end: descNeighbourIndex)
             }
+            // there'll be a bug where if you move the items enough times, then random can't do its job
         } else if origin < destination {
-            
+            if let firstDescNeighbourIndex = fetchIndex(at: destination),
+               let secDescNeighbourIndex = fetchDescendingNeighbourIndex(at: destination) {
+                item.index = assignIndex(start: firstDescNeighbourIndex, end: secDescNeighbourIndex)
+            }
         }
     }
     
@@ -51,8 +55,21 @@ final class ContentViewController {
         request.sortDescriptors = [NSSortDescriptor(keyPath: \Item.index, ascending: true)]
         request.fetchLimit = 1
         do {
-            let item = try self.persistence.container.viewContext.fetch(request).first!
+            guard let item = try self.persistence.container.viewContext.fetch(request).first else { return nil }
             return item.index
+        } catch {
+            return nil
+        }
+    }
+    
+    func fetchItem(at destination: Int) -> Item? {
+        let request = NSFetchRequest<Item>(entityName: "Item")
+        request.fetchOffset = destination - 1
+        request.sortDescriptors = [NSSortDescriptor(keyPath: \Item.index, ascending: true)]
+        request.fetchLimit = 1
+        do {
+            guard let item = try self.persistence.container.viewContext.fetch(request).first else { return nil }
+            return item
         } catch {
             return nil
         }
@@ -64,13 +81,14 @@ final class ContentViewController {
         request.sortDescriptors = [NSSortDescriptor(keyPath: \Item.index, ascending: true)]
         request.fetchLimit = 1
         do {
-            let item = try self.persistence.container.viewContext.fetch(request)
-            return item.first!.index
+            guard let item = try self.persistence.container.viewContext.fetch(request).first else { return nil }
+            return item.index
         } catch {
             return nil
         }
     }
     
+    /// This is a dumb function. We need to write higher level functions for validation.
     private func assignIndex(start: Int64 = -99999, end: Int64) -> Int64 {
         return Int64.random(in: start...end)
     }
