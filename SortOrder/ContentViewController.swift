@@ -15,15 +15,17 @@ final class ContentViewController {
     func add(item: Item) {
         item.index = 0
         var fetch = fetchLowestItems()
-        fetch.removeFirst() // discard the first item because it'll always be the one that we just added
-        let lowest = fetch.removeFirst()
-        if lowest.index >= 0 {
-            print(fetch.count)
-            if fetch.count == 1{
-                let neighbour = fetch.removeFirst()
-                lowest.index = assignIndex(start: neighbour.index, end: 0)
-            } else {
-                lowest.index = assignIndex(end: 0)
+        if fetch.count > 1 {
+            fetch.removeFirst() // discard the first item because it'll always be the one that we just added
+            let lowest = fetch.removeFirst()
+            if lowest.index >= 0 {
+                print(fetch.count)
+                if fetch.count == 1 {
+                    let neighbour = fetch.removeFirst()
+                    lowest.index = assignIndex(start: neighbour.index, end: 0)
+                } else {
+                    lowest.index = assignIndex(end: 0)
+                }
             }
         }
     }
@@ -41,7 +43,7 @@ final class ContentViewController {
             if let parentNeighbour = fetchItem(at: destination),
                let descNeighbour = fetchDescendingNeighbour(at: destination) {
                 item.index = assignIndex(start: parentNeighbour.index, end: descNeighbour.index)
-                validate([item, parentNeighbour, descNeighbour])
+                validate([descNeighbour, item, parentNeighbour])
             }
             // there'll be a bug where if you move the items enough times, then random can't do its job
         } else if origin < destination {
@@ -96,12 +98,11 @@ final class ContentViewController {
     
     private func fetchDescendingNeighbour(below index: Int64) -> Item? {
         let request = NSFetchRequest<Item>(entityName: "Item")
-        request.predicate = NSPredicate(format: "%K > %@", #keyPath(Item.index), index)
+        request.predicate = NSPredicate(format: "%K > %ld", #keyPath(Item.index), index)
         request.sortDescriptors = [NSSortDescriptor(keyPath: \Item.index, ascending: true)]
         request.fetchLimit = 1
         do {
             guard let item = try self.persistence.container.viewContext.fetch(request).first else { return nil }
-            print(item)
             return item
         } catch {
             return nil
@@ -110,7 +111,7 @@ final class ContentViewController {
     
     private func fetchParentNeighbour(above index: Int64) -> Item? {
         let request = NSFetchRequest<Item>(entityName: "Item")
-        request.predicate = NSPredicate(format: "%K <= %@", #keyPath(Item.index), index)
+        request.predicate = NSPredicate(format: "%K <= %ld", #keyPath(Item.index), index)
         request.sortDescriptors = [NSSortDescriptor(keyPath: \Item.index, ascending: true)]
         request.fetchLimit = 1
         do {
@@ -143,11 +144,28 @@ final class ContentViewController {
     private func validate(_ items: [Item]) {
         if let upperBound = items.max(by: { $0.index < $1.index }),
            let lowerBound = items.min(by: { $0.index < $1.index }) {
-            print(upperBound.index, lowerBound.index, abs(upperBound.index + lowerBound.index) < 10)
-            if upperBound.index + lowerBound.index < abs(10) {
-                let newUpperBound = fetchParentNeighbour(above: upperBound.index)?.index ?? -99999
-                let lowerBound = fetchDescendingNeighbour(below: lowerBound.index)?.index ?? 0
-                print(newUpperBound, lowerBound)
+
+            if abs(upperBound.index - lowerBound.index) < 10 {
+                var newUpperBoundIndex = fetchParentNeighbour(above: upperBound.index)?.index ?? -99999
+                if abs(newUpperBoundIndex - upperBound.index) < 100 {
+                    newUpperBoundIndex = -99999
+                }
+                var newLowerBound = fetchDescendingNeighbour(below: lowerBound.index)?.index ?? 0
+                if abs(lowerBound.index - newLowerBound) < 100 {
+                    newLowerBound = fetchDescendingNeighbour(below: newLowerBound)?.index ?? 0
+                }
+                
+                let range = abs(newUpperBoundIndex - newLowerBound) / 3
+                print("range is \(range); lower: \(newLowerBound) - upper: \(newUpperBoundIndex)")
+                print("Starting from: \(newLowerBound)")
+                
+                for (index, interval) in items.enumerated() {
+                    interval.index = -range * Int64(index)
+                    print(interval.index)
+                }
+                
+                print("Finishing at: \(newUpperBoundIndex)")
+                   
             }
         }
     }
