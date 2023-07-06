@@ -16,10 +16,9 @@ final class ContentViewController {
         item.index = 0
         var fetch = fetchLowestItems()
         if fetch.count > 1 {
-            fetch.removeFirst() // discard the first item because it'll always be the one that we just added
+            fetch.removeFirst()
             let lowest = fetch.removeFirst()
             if lowest.index >= 0 {
-                print(fetch.count)
                 if fetch.count == 1 {
                     let neighbour = fetch.removeFirst()
                     lowest.index = assignIndex(start: neighbour.index, end: 0)
@@ -35,26 +34,23 @@ final class ContentViewController {
         print("Destination: \(destination)")
         
         if destination == 0 {
-            if let firstItem = fetchHighestIndex() {
-                item.index = assignIndex(end: firstItem.index)
-            }
+            guard let firstItem = fetchHighestIndex() else { return }
+            item.index = assignIndex(end: firstItem.index)
+            cleanUp()
         } else if origin > destination {
             // `move` will always insert it below the destination when trying to move
-            if let parentNeighbour = fetchItem(at: destination),
-               let descNeighbour = fetchDescendingNeighbour(at: destination) {
-                item.index = assignIndex(start: parentNeighbour.index, end: descNeighbour.index)
-                validate([descNeighbour, item, parentNeighbour])
-            }
-            // there'll be a bug where if you move the items enough times, then random can't do its job
+            guard let parentNeighbour = fetchItem(at: destination),
+                  let descNeighbour = fetchDescendingNeighbour(at: destination) else { return }
+            item.index = assignIndex(start: parentNeighbour.index, end: descNeighbour.index)
+            validate([descNeighbour, item, parentNeighbour])
         } else if origin < destination {
-            if let firstDescNeighbour = fetchItem(at: destination) {
-                if let secDescNeighbour = fetchDescendingNeighbour(at: destination) {
-                    item.index = assignIndex(start: firstDescNeighbour.index, end: secDescNeighbour.index)
-                    validate([secDescNeighbour, item, firstDescNeighbour])
-                } else if let parentNeighbourIndex = fetchIndex(at: destination - 1) {
-                    firstDescNeighbour.index = assignIndex(start: parentNeighbourIndex, end: 0)
-                    item.index = 0
-                }
+            guard let firstDescNeighbour = fetchItem(at: destination) else { return }
+            if let secDescNeighbour = fetchDescendingNeighbour(at: destination) {
+                item.index = assignIndex(start: firstDescNeighbour.index, end: secDescNeighbour.index)
+                validate([secDescNeighbour, item, firstDescNeighbour])
+            } else if let parentNeighbourIndex = fetchIndex(at: destination - 1) {
+                firstDescNeighbour.index = assignIndex(start: parentNeighbourIndex, end: 0)
+                item.index = 0
             }
         }
     }
