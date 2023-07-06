@@ -12,6 +12,22 @@ final class ContentViewController {
     static let shared = ContentViewController()
     private var persistence = PersistenceController.shared
     
+    func add(item: Item) {
+        item.index = 0
+        var fetch = fetchLowestItems()
+        fetch.removeFirst() // discard the first item because it'll always be the one that we just added
+        let lowest = fetch.removeFirst()
+        if lowest.index >= 0 {
+            print(fetch.count)
+            if fetch.count == 1{
+                let neighbour = fetch.removeFirst()
+                lowest.index = assignIndex(start: neighbour.index, end: 0)
+            } else {
+                lowest.index = assignIndex(end: 0)
+            }
+        }
+    }
+    
     func move(item: Item, origin: Int, destination: Int) {
         guard origin != destination else { return }
         
@@ -50,6 +66,19 @@ final class ContentViewController {
             return item.first!
         } catch {
             return nil
+        }
+    }
+    
+    func fetchLowestItems() -> [Item] {
+        let request = NSFetchRequest<Item>(entityName: "Item")
+        request.predicate = NSPredicate(format: "%K <= 0", #keyPath(Item.index))
+        request.sortDescriptors = [NSSortDescriptor(keyPath: \Item.index, ascending: false), NSSortDescriptor(keyPath: \Item.timestamp, ascending: false)]
+        request.fetchLimit = 3
+        do {
+            let items = try self.persistence.container.viewContext.fetch(request)
+            return items
+        } catch {
+            return []
         }
     }
     
