@@ -105,20 +105,10 @@ struct ContentView: View {
     }
     
     private func move(from source: IndexSet, to destination: Int) {
-        print("Indices: \(source.map { $0 })")
-        print("Destination: \(destination)")
-        
-        
         let origin = source.map { $0 }.first!
-        let item = items[source.first!]
-//        let object = items[destination]
-        
-        
-        if 
-        
-        
-        let first = try? controller.fetchHighestIndex()
-        print(first!.index)
+        let item = items[origin]
+
+        controller.move(item: item, origin: origin, destination: destination)
         
 //        if destination == 0 {
 //            item.index = Int64.random(in: -99999...items.first!.index)
