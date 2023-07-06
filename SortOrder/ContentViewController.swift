@@ -30,9 +30,13 @@ final class ContentViewController {
             }
             // there'll be a bug where if you move the items enough times, then random can't do its job
         } else if origin < destination {
-            if let firstDescNeighbourIndex = fetchIndex(at: destination),
-               let secDescNeighbourIndex = fetchDescendingNeighbourIndex(at: destination) {
-                item.index = assignIndex(start: firstDescNeighbourIndex, end: secDescNeighbourIndex)
+            if let firstDescNeighbour = fetchItem(at: destination) {
+                if let secDescNeighbourIndex = fetchDescendingNeighbourIndex(at: destination) {
+                    item.index = assignIndex(start: firstDescNeighbour.index, end: secDescNeighbourIndex)
+                } else if let parentNeighbourIndex = fetchIndex(at: destination - 1) {
+                    firstDescNeighbour.index = assignIndex(start: parentNeighbourIndex, end: 0)
+                    item.index = 0
+                }
             }
         }
     }
