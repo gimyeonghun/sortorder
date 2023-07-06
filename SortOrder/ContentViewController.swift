@@ -29,8 +29,6 @@ final class ContentViewController {
     }
     
     func move(item: Item, origin: Int, destination: Int) {
-        guard origin != destination else { return }
-        
         print("Origin: \(origin)")
         print("Destination: \(destination)")
         
@@ -40,15 +38,16 @@ final class ContentViewController {
             }
         } else if origin > destination {
             // `move` will always insert it below the destination when trying to move
-            if let parentNeighbourIndex = fetchIndex(at: destination),
-               let descNeighbourIndex = fetchDescendingNeighbourIndex(at: destination) {
-                item.index = assignIndex(start: parentNeighbourIndex, end: descNeighbourIndex)
+            if let parentNeighbour = fetchItem(at: destination),
+               let descNeighbour = fetchDescendingNeighbour(at: destination) {
+                item.index = assignIndex(start: parentNeighbour.index, end: descNeighbour.index)
+                validate([item, parentNeighbour, descNeighbour])
             }
             // there'll be a bug where if you move the items enough times, then random can't do its job
         } else if origin < destination {
             if let firstDescNeighbour = fetchItem(at: destination) {
-                if let secDescNeighbourIndex = fetchDescendingNeighbourIndex(at: destination) {
-                    item.index = assignIndex(start: firstDescNeighbour.index, end: secDescNeighbourIndex)
+                if let secDescNeighbour = fetchDescendingNeighbour(at: destination) {
+                    item.index = assignIndex(start: firstDescNeighbour.index, end: secDescNeighbour.index)
                 } else if let parentNeighbourIndex = fetchIndex(at: destination - 1) {
                     firstDescNeighbour.index = assignIndex(start: parentNeighbourIndex, end: 0)
                     item.index = 0
@@ -57,7 +56,7 @@ final class ContentViewController {
         }
     }
     
-    func fetchHighestIndex() -> Item? {
+    private func fetchHighestIndex() -> Item? {
         let request = NSFetchRequest<Item>(entityName: "Item")
         request.sortDescriptors = [NSSortDescriptor(keyPath: \Item.index, ascending: true)]
         request.fetchLimit = 1
@@ -69,7 +68,7 @@ final class ContentViewController {
         }
     }
     
-    func fetchLowestItems() -> [Item] {
+    private func fetchLowestItems() -> [Item] {
         let request = NSFetchRequest<Item>(entityName: "Item")
         request.predicate = NSPredicate(format: "%K <= 0", #keyPath(Item.index))
         request.sortDescriptors = [NSSortDescriptor(keyPath: \Item.index, ascending: false), NSSortDescriptor(keyPath: \Item.timestamp, ascending: false)]
@@ -82,20 +81,47 @@ final class ContentViewController {
         }
     }
     
-    func fetchDescendingNeighbourIndex(at destination: Int) -> Int64? {
+    private func fetchDescendingNeighbour(at destination: Int) -> Item? {
         let request = NSFetchRequest<Item>(entityName: "Item")
         request.fetchOffset = destination
         request.sortDescriptors = [NSSortDescriptor(keyPath: \Item.index, ascending: true)]
         request.fetchLimit = 1
         do {
             guard let item = try self.persistence.container.viewContext.fetch(request).first else { return nil }
-            return item.index
+            return item
         } catch {
             return nil
         }
     }
     
-    func fetchItem(at destination: Int) -> Item? {
+    private func fetchDescendingNeighbour(below index: Int64) -> Item? {
+        let request = NSFetchRequest<Item>(entityName: "Item")
+        request.predicate = NSPredicate(format: "%K > %@", #keyPath(Item.index), index)
+        request.sortDescriptors = [NSSortDescriptor(keyPath: \Item.index, ascending: true)]
+        request.fetchLimit = 1
+        do {
+            guard let item = try self.persistence.container.viewContext.fetch(request).first else { return nil }
+            print(item)
+            return item
+        } catch {
+            return nil
+        }
+    }
+    
+    private func fetchParentNeighbour(above index: Int64) -> Item? {
+        let request = NSFetchRequest<Item>(entityName: "Item")
+        request.predicate = NSPredicate(format: "%K <= %@", #keyPath(Item.index), index)
+        request.sortDescriptors = [NSSortDescriptor(keyPath: \Item.index, ascending: true)]
+        request.fetchLimit = 1
+        do {
+            guard let item = try self.persistence.container.viewContext.fetch(request).first else { return nil }
+            return item
+        } catch {
+            return nil
+        }
+    }
+    
+    private func fetchItem(at destination: Int) -> Item? {
         let request = NSFetchRequest<Item>(entityName: "Item")
         request.fetchOffset = destination - 1
         request.sortDescriptors = [NSSortDescriptor(keyPath: \Item.index, ascending: true)]
@@ -108,16 +134,21 @@ final class ContentViewController {
         }
     }
     
-    func fetchIndex(at destination: Int) -> Int64? {
-        let request = NSFetchRequest<Item>(entityName: "Item")
-        request.fetchOffset = destination - 1
-        request.sortDescriptors = [NSSortDescriptor(keyPath: \Item.index, ascending: true)]
-        request.fetchLimit = 1
-        do {
-            guard let item = try self.persistence.container.viewContext.fetch(request).first else { return nil }
-            return item.index
-        } catch {
-            return nil
+    private func fetchIndex(at destination: Int) -> Int64? {
+        guard let item = try? fetchItem(at: destination) else { return nil }
+        return item.index
+    }
+    
+    /// Checks whether there's enough space for the items to be differeniated
+    private func validate(_ items: [Item]) {
+        if let upperBound = items.max(by: { $0.index < $1.index }),
+           let lowerBound = items.min(by: { $0.index < $1.index }) {
+            print(upperBound.index, lowerBound.index, abs(upperBound.index + lowerBound.index) < 10)
+            if upperBound.index + lowerBound.index < abs(10) {
+                let newUpperBound = fetchParentNeighbour(above: upperBound.index)?.index ?? -99999
+                let lowerBound = fetchDescendingNeighbour(below: lowerBound.index)?.index ?? 0
+                print(newUpperBound, lowerBound)
+            }
         }
     }
     
