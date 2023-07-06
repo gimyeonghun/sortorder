@@ -50,6 +50,7 @@ final class ContentViewController {
             if let firstDescNeighbour = fetchItem(at: destination) {
                 if let secDescNeighbour = fetchDescendingNeighbour(at: destination) {
                     item.index = assignIndex(start: firstDescNeighbour.index, end: secDescNeighbour.index)
+                    validate([secDescNeighbour, item, firstDescNeighbour])
                 } else if let parentNeighbourIndex = fetchIndex(at: destination - 1) {
                     firstDescNeighbour.index = assignIndex(start: parentNeighbourIndex, end: 0)
                     item.index = 0
@@ -142,9 +143,15 @@ final class ContentViewController {
     
     /// Checks whether there's enough space for the items to be differeniated
     private func validate(_ items: [Item]) {
+        recalculateBounds(items)
+        checkUniqueness(items)
+        cleanUp()
+    }
+    
+    private func recalculateBounds(_ items: [Item]) {
         if let upperBound = items.max(by: { $0.index < $1.index }),
            let lowerBound = items.min(by: { $0.index < $1.index }) {
-
+            
             if abs(upperBound.index - lowerBound.index) < 10 {
                 var newUpperBoundIndex = fetchParentNeighbour(above: upperBound.index)?.index ?? -99999
                 if abs(newUpperBoundIndex - upperBound.index) < 100 {
@@ -159,14 +166,35 @@ final class ContentViewController {
                 print("range is \(range); lower: \(newLowerBound) - upper: \(newUpperBoundIndex)")
                 print("Starting from: \(newLowerBound)")
                 
-                for (index, interval) in items.enumerated() {
-                    interval.index = -range * Int64(index)
-                    print(interval.index)
+                for index in stride(from: newLowerBound, through: newUpperBoundIndex, by: Int64.Stride(range)) {
+                    items[Int(index)].index = -range * index
                 }
                 
                 print("Finishing at: \(newUpperBoundIndex)")
-                   
+                
             }
+        }
+    }
+    
+    private func checkUniqueness(_ items: [Item]) {
+        let request = NSFetchRequest<Item>(entityName: "Item")
+      
+        for item in items {
+            request.predicate = NSPredicate(format: "%K == %ld AND %K != %@", #keyPath(Item.index), item.index, #keyPath(Item.timestamp), item.timestamp! as CVarArg)
+            request.sortDescriptors = [NSSortDescriptor(keyPath: \Item.index, ascending: true)]
+            request.fetchLimit = 1
+            if let similarItem = try? self.persistence.container.viewContext.fetch(request).first,
+               let upperBound = fetchParentNeighbour(above: item.index),
+               let lowerBound = fetchDescendingNeighbour(below: item.index) {
+                similarItem.index = Int64.random(in: similarItem.index...upperBound.index)
+                item.index = Int64.random(in: lowerBound.index...similarItem.index)
+            }
+        }
+    }
+    
+    private func cleanUp() {
+        if let zeroIndexItem = fetchLowestItems().first {
+            zeroIndexItem.index = 0
         }
     }
     
